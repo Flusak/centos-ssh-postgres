@@ -24,7 +24,7 @@ yum install -y pgadmin4-web &&
 ``
 read -p "Name for new database: " db &&
 read -p "Name for new superuser: " username &&
-read -sp "Password for $username: " usr_pass &&
+read -sp "Password for new superuser $username: " usr_pass &&
 
 echo $pos_pass | su -c "psql -d postgres -c \"create database $db;\"" postgres 2> /dev/null &&
 echo $pos_pass | su -c "psql -d postgres -c \"create user $username with login superuser password '$usr_pass';\"" postgres 2> /dev/null &&
