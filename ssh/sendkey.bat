@@ -7,8 +7,7 @@ if "%1"=="-i" (
     goto checkey
     ) else (
         goto checkdef
-    )
-goto:eof
+)
 
 :checkey
 echo %key% | findstr ".pub" >nul
@@ -25,17 +24,16 @@ if errorlevel 1 (
         goto sshcopykey
     )
 )
-goto:eof
 
 :checkdef
 @type %keydef% 2>nul >nul
 if errorlevel 1 (
     @echo Error: id_rsa.pub not found!
+    exit
 ) else (
     set usekey=%keydef%
     goto sshcopykey
 )
-goto:eof
 
 :sshcopykey
 set /P user="User: "
