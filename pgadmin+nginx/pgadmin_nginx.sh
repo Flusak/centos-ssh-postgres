@@ -1,17 +1,63 @@
+#!/bin/bash
 if [ $EUID -ne 0 ]
 then
 echo Error: script not running by sudo
 exit
 fi
 
+
+fin_check () {
+green='\033[0;32m' &&
+red='\033[0;31m' &&
+endcolor='\033[0m' &&
+num_try=0
+
+nohup ./pgadmin4/bin/python3 ./pgadmin4/lib/python3.6/site-packages/pgadmin4/pgAdmin4.py  &
+sleep 5 &&
+
+info=$(curl -I -o /dev/stdout --url http://localhost:80/ -s) &&
+while ! echo $info | grep -E ".*login\?.*" > /dev/null
+do
+	((num_try+=1))
+    time_sleep=$((5 + num_try))
+	echo "$num_try: Failed. Trying again in $time_sleep seconds..."
+	for i in $(ps -aux | egrep "pgadmin4" | tr -s "\t " " "| cut -f2 -d' ')
+	do
+		kill -9 $i > /dev/null 2> /dev/null
+	done
+	nohup ./pgadmin4/bin/python3 ./pgadmin4/lib/python3.6/site-packages/pgadmin4/pgAdmin4.py  &
+	sleep $time_sleep
+    info=$(curl -I -o /dev/stdout --url http://localhost:80/ -s)
+done
+
+if echo $info | grep -E ".*login\?.*" > /dev/null
+then
+    echo -e "${green}Success! pgAdmin is running!${endcolor}"
+    echo "To connect to pgAdmin use: http://$ip_con:80/"
+    echo -e "To connect to db use\nServer: localhost\nUser: $username"
+	exit
+else
+	echo -e "${red}Something went wrong...${endcolor}"
+    exit
+fi
+}
+
+
 yum install -y epel-release &&
-yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm &&
+if ! [ -e /etc/yum.repos.d/pgdg-redhat-all.repo ]
+then
+yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+fi
 yum install -y python3 python3-pip nginx postgresql15-server policycoreutils-python &&
 
 mkdir -p /var/lib/pgadmin /var/log/pgadmin &&
-
 chown $USER /var/lib/pgadmin /var/log/pgadmin &&
 
+if [ -d ./pgadmin4 ]
+then
+    echo "Find! Delete."
+    rm -r ./pgadmin4
+fi
 python3 -m venv pgadmin4 &&
 
 #source pgadmin4/bin/activate
@@ -29,11 +75,13 @@ firewall-cmd --reload  &&
 mv -f ./pga.conf /etc/nginx/conf.d/ &&
 systemctl restart nginx &&
 echo "nginx restart" &&
+
 /usr/pgsql-15/bin/postgresql-15-setup initdb &&
 systemctl enable postgresql-15 &&
 systemctl start postgresql-15 &&
 echo "postgres start" &&
-read -p "Ready to continue?" asdas &&
+
+read -p "Press Enter to continue" asdas &&
 read -sp "New password for user \"postgres\": " pos_pass &&
 echo $pos_pass | passwd postgres --stdin &&
 
@@ -44,26 +92,8 @@ read -sp "Password for new superuser $username: " usr_pass &&
 echo $pos_pass | su -c "psql -d postgres -c \"create database $db;\"" postgres 2> /dev/null &&
 echo $pos_pass | su -c "psql -d postgres -c \"create user $username with login superuser password '$usr_pass';\"" postgres 2> /dev/null &&
 
-
+./pgadmin4/bin/python3 ./pgadmin4/lib/python3.6/site-packages/pgadmin4/setup.py &&
 
 ip_con=$(ip a | egrep "inet[^6]" | egrep -v 127 |tr -s "\t " " "| cut -f3 -d' ' | cut -f1 -d/) &&
-echo $ip_con:80 &&
 
-echo -e "For connection to db in pgadmin use\n" &&
-echo -e "Server: localhost\nUser:" $superuser &&
-
-nohup ./pgadmin4/bin/python3 ./pgadmin4/lib/python3.6/site-packages/pgadmin4/pgAdmin4.py  &
-
-sleep 5 &&
-info=$(curl -I -o /dev/stdout --url http://localhost:80/ -s) &&
-if echo $info | grep -E ".*login\?.*" > /dev/null
-then
-echo "Available. Exit..."
-exit
-else
-for i in $(ps -aux | egrep "pgadmin4" | tr -s "\t " " "| cut -f2 -d' ')
-do
-kill -9 $i
-done
-echo "Not available"
-fi
+fin_check
