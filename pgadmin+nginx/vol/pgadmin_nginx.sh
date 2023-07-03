@@ -42,6 +42,12 @@ else
 fi
 }
 
+read -p "Input proxy (if not Enter): " useproxy
+if ! [ -z "$useproxy" ]
+then
+echo "proxy=$useproxy" >> /etc/yum.conf
+useproxy="--proxy $useproxy"
+fi
 
 yum install -y epel-release &&
 if ! [ -e /etc/yum.repos.d/pgdg-redhat-all.repo ]
@@ -61,8 +67,8 @@ fi
 python3 -m venv pgadmin4 &&
 
 #source pgadmin4/bin/activate
-./pgadmin4/bin/pip install --upgrade pip --proxy http://proxy.infosec.ru:8080/ &&
-./pgadmin4/bin/pip install pgadmin4 --proxy http://proxy.infosec.ru:8080/ &&
+./pgadmin4/bin/pip install --upgrade pip $useproxy &&
+./pgadmin4/bin/pip install pgadmin4 $useproxy &&
 
 printf "HELP_PATH = '../../docs/en_US/_build/html/'\nMINIFY_HTML = False\nLOG_FILE = '/var/log/pgadmin4/pgadmin4.log'\nSQLITE_PATH = '/var/lib/pgadmin4/pgadmin4.db'\nSESSION_DB_PATH = '/var/lib/pgadmin4/sessions'\nSTORAGE_DIR = '/var/lib/pgadmin4/storage'\nSERVER_MODE = True\n" >> config_distro.py &&
 mv -f ./config_distro.py pgadmin4/lib/python3.6/site-packages/pgadmin4/  &&
@@ -72,7 +78,7 @@ setenforce 0 &&
 firewall-cmd --add-port=80/tcp --zone=public --permanent &&
 firewall-cmd --reload  &&
 
-mv -f ./pga.conf /etc/nginx/conf.d/ &&
+cp -f ./pga.conf /etc/nginx/conf.d/ &&
 systemctl restart nginx &&
 echo "nginx restart" &&
 
