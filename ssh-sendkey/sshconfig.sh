@@ -8,7 +8,8 @@ fi
 
 read -p "New port: " port
 
-sed -i -e "s/#Port 22/Port $port/; s/#PermitRootLogin yes/PermitRootLogin no/;\
+sed -i -e "s/#Port 22/Port $port/;\
+ s/#PermitRootLogin yes/PermitRootLogin no/;\
  s/#PubkeyAuthentication yes/PubkeyAuthentication yes/;\
  s/PasswordAuthentication yes/PasswordAuthentication no/" /etc/ssh/sshd_config
 
