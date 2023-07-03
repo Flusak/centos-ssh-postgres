@@ -1,17 +1,25 @@
 #!/bin/bash
-
 if [ $EUID -ne 0 ]
 then
 echo Error: script not running by sudo
 exit
 fi
 
-read -p "New port: " port
+read -p "Input proxy (if not Enter): " useproxy
+if ! [ -z "$useproxy" ]
+then
+echo "proxy=$useproxy" >> /etc/yum.conf
+fi
 
-sed -i -e "s/#Port 22/Port $port/;\
- s/#PermitRootLogin yes/PermitRootLogin no/;\
- s/#PubkeyAuthentication yes/PubkeyAuthentication yes/;\
- s/PasswordAuthentication yes/PasswordAuthentication no/" /etc/ssh/sshd_config
+read -p "New port: " port
+sed -i -e "/^.\?Port\s[0-9]\+/s/\s[0-9]\+/ $port/;\
+ /^.\?Port\s[0-9]\+/s/^#//;\
+ /^.\?PermitRootLogin/s/\s[a-z]\+-\?[a-z]\+/ no/;\
+ /^.\?PermitRootLogin/s/^#//;\
+ /^.\?PubkeyAuthentication/s/\s[a-z]\+/ yes/;\
+ /^.\?PubkeyAuthentication/s/^#//;\
+ /^.\?PasswordAuthentication/s/\s[a-z]\+/ no/;\
+ /^.\?PasswordAuthentication/s/^#//;" /etc/ssh/sshd_config
 
 firewall-cmd --permanent --zone=public --add-port=$port/tcp
 firewall-cmd --reload
