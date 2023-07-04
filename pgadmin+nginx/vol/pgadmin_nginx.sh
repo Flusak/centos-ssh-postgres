@@ -45,7 +45,10 @@ fi
 read -p "Input proxy (if not Enter): " useproxy
 if ! [ -z "$useproxy" ]
 then
-echo "proxy=$useproxy" >> /etc/yum.conf
+  if ! cat /etc/yum.conf | grep "proxy=$useproxy" >> /dev/null
+  then 
+  echo "proxy=$useproxy" >> /etc/yum.conf
+  fi
 useproxy="--proxy $useproxy"
 fi
 
@@ -78,11 +81,14 @@ setenforce 0 &&
 firewall-cmd --add-port=80/tcp --zone=public --permanent &&
 firewall-cmd --reload  &&
 
+systemctl stop httpd 
+systemctl disable httpd
+
 cp -f ./pga.conf /etc/nginx/conf.d/ &&
 systemctl restart nginx &&
 echo "nginx restart" &&
 
-/usr/pgsql-15/bin/postgresql-15-setup initdb &&
+/usr/pgsql-15/bin/postgresql-15-setup initdb 
 systemctl enable postgresql-15 &&
 systemctl start postgresql-15 &&
 echo "postgres start" &&
