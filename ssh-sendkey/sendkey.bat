@@ -42,4 +42,4 @@ type %usekey% | ssh %user%@%host% "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_k
 
 scp -i %usekey:.pub=% ./sshconfig.sh %user%@%host%:.
 
-ssh -t %user%@%host% "sudo bash sshconfig.sh"
+ssh -t -i %usekey:.pub=% %user%@%host% "sudo bash sshconfig.sh"
