@@ -8,20 +8,25 @@ fi
 read -p "Input proxy (if not Enter): " useproxy
 if ! [ -z "$useproxy" ]
 then
-echo "proxy=$useproxy" >> /etc/yum.conf
+  if ! cat /etc/yum.conf | grep "proxy=$useproxy" >> /dev/null
+  then 
+  echo "proxy=$useproxy" >> /etc/yum.conf
+  fi
 useproxy="--httpproxy $useproxy"
 fi
 
 yum install -y epel-release &&
 if ! [ -e /etc/yum.repos.d/pgdg-redhat-all.repo ]
 then
-yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+	yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
 fi
-
-rpm -i https://ftp.postgresql.org/pub/pgadmin/pgadmin4/yum/pgadmin4-redhat-repo-2-1.noarch.rpm $useproxy &&
+if ! [ -e /etc/yum.repos.d/pgadmin4.repo ]
+then
+	rpm -i https://ftp.postgresql.org/pub/pgadmin/pgadmin4/yum/pgadmin4-redhat-repo-2-1.noarch.rpm $useproxy
+fi
 yum install -y postgresql15-server policycoreutils-python pgadmin4-web &&
 
-/usr/pgsql-15/bin/postgresql-15-setup initdb &&
+/usr/pgsql-15/bin/postgresql-15-setup initdb
 systemctl enable postgresql-15 &&
 systemctl start postgresql-15 &&
 
@@ -34,6 +39,10 @@ read -sp "Password for new superuser $username: " usr_pass &&
 
 echo $pos_pass | su -c "psql -d postgres -c \"create database $db;\"" postgres 2> /dev/null &&
 echo $pos_pass | su -c "psql -d postgres -c \"create user $username with login superuser password '$usr_pass';\"" postgres 2> /dev/null &&
+
+sudo kill nginx
+systemctl stop nginx
+systemctl disable nginx
 
 /usr/pgadmin4/bin/setup-web.sh &&
 
